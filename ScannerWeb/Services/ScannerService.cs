@@ -1,17 +1,21 @@
 ﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using ScannerWeb.Entities;
 using ScannerWeb.Models;
+using System;
+using System.Security.Cryptography;
 
 namespace ScannerWeb.Services
 {
-	public interface IScannerService
+    public interface IScannerService
 	{
-		SkanerDto SprawdzenieSkanera(int idSkanera);
-		KartyDto GetByUid(int uid);
-		KartyDto GetByKOD(int kodOtwarcia);
+		SkanerDto? SprawdzenieSkanera(int idSkanera);
+		string? TypAutoryzacji(SkanerDto dto, String type);
 		IEnumerable<PracownikDto> GetAll();
-		int Dodaj(DodajPracownikaDto dto);
-		//ScannerDto GetById(int id);
+		void DodajH(int idSkanera, int idOsoby, String type);
+		int Autoryzacja(String type, int password);
+		int SprawdzeniePoziomuDostepu(SkanerDto dto, int uidOsoby);
 	}
 
 	public class ScannerService : IScannerService
@@ -30,21 +34,14 @@ namespace ScannerWeb.Services
 		{
 			var pracowniks = _dbContext
 				.Pracowniks
-				//.Include(s => s.Employees)
 				.ToList();
-
+			
 			var pracowniksDtos = _mapper.Map<List<PracownikDto>>(pracowniks);
 
 			return pracowniksDtos;
 		}
-		public int Dodaj(DodajPracownikaDto dto)
-		{
-			var pracownik = _mapper.Map<Pracownik>(dto);
-			_dbContext.Pracowniks.Add(pracownik);
-			_dbContext.SaveChanges();
-			return pracownik.IdPracownik;
-		}
-		public SkanerDto SprawdzenieSkanera(int idSkanera)
+		// Sprawdzenie czy skaner o podanym identyfikatorze istnieje w bazie danych
+		public SkanerDto? SprawdzenieSkanera(int idSkanera)
 		{
 			var skaner = _dbContext
 				.Skaners
@@ -53,26 +50,68 @@ namespace ScannerWeb.Services
 			var result = _mapper.Map<SkanerDto>(skaner);
 			return result;
 		}
-		public KartyDto GetByUid(int uid)
+		
+		// Sprawdzenie czy skaner posiada autoryzację za pomocą danego typu
+		public string? TypAutoryzacji(SkanerDto dto, String typ)
 		{
-			var karta = _dbContext
-				.Karties
-				//.Include(s => s.Osoby)
-				.FirstOrDefault(r => r.Uid == uid);
-			
-			if (karta is null) return null;
-			var result = _mapper.Map<KartyDto>(karta);
-			return result;
+			if(!(typ == "UID" || typ == "KOD")) return null;
+			var typ_2 = dto.TypAutoryzacji;
+			if (typ_2 == "UK")
+				return ("ok");
+			else if (typ_2 == typ)
+				return ("ok");
+			else
+				return null;
 		}
-		public KartyDto GetByKOD(int kodOtwarcia)
+		// Sprawdzenie czy dane do autoryzacji są prawidłowe
+		public int Autoryzacja(String typ, int haslo)
 		{
-			var kod = _dbContext
-				.Karties
-				.FirstOrDefault(r => r.KodOtwarcia == kodOtwarcia);
-				//r => r.Id == id
-			if (kod is null) return null;
-			var result = _mapper.Map<KartyDto>(kod);
-			return result;
+			Karty karta;
+			if (typ == "KOD")
+			{
+				karta = _dbContext.Karties.FirstOrDefault(r => r.KodOtwarcia == haslo);
+			}
+			else if (typ == "UID")
+			{
+				karta = _dbContext.Karties.FirstOrDefault(r => r.Uid == haslo);
+			}
+			else
+			{
+				return 0;
+			}
+			if (karta != null)
+			{
+				return karta.Uid;
+			}
+			else
+			{
+				return 0;
+			}
+		}
+		// Sprawdzenie czy osoba posiada dostęp do danego budynku
+		public int SprawdzeniePoziomuDostepu(SkanerDto dto, int uidOsoby)	
+		{
+			var poziom = dto.PoziomDostepu;
+			var pracownik = _dbContext.Pracowniks.FirstOrDefault(k => k.IdKarty == uidOsoby);
+			if (pracownik == null) return 0;
+			return pracownik.PoziomDostepu switch
+			{
+				"A" => pracownik.IdPracownik,
+				"B" when poziom == "B" || poziom == "C" => pracownik.IdPracownik,
+				"C" when poziom == "C" => pracownik.IdPracownik,
+				_ => 0,
+			};
+		}
+		// Dodanie nowego rekordu z osobą do bazy danych 
+		public void DodajH(int idSkanera, int idOsoby, String type)
+		{
+			var historia = new DodajHistoriumDto();
+			historia.IdSkanera = idSkanera;
+			historia.IdOsoby = idOsoby;
+			historia.TypAutoryzacji = type;
+			_dbContext.Historia.Add(_mapper.Map<Historium>(historia));
+			_dbContext.SaveChanges();
 		}
 	}
 }
+

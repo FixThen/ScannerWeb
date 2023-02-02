@@ -2,11 +2,9 @@
 
 namespace ScannerWeb.Models
 {
-	public class KartyDto
+    public class KartyDto
 	{
 		public int Uid { get; set; }
-
-		public int IdOsoby { get; set; }
 
 		public int? KodOtwarcia { get; set; }
 

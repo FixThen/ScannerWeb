@@ -2,7 +2,7 @@
 
 namespace ScannerWeb.Models
 {
-	public class SkanerDto
+    public class SkanerDto
 	{
 			public int IdSkanera { get; set; }
 

@@ -4,20 +4,20 @@ using ScannerWeb.Models;
 
 namespace ScannerWeb
 {
-	public class ScannerMappingProfile : Profile
+    public class ScannerMappingProfile : Profile
 	{
 		public ScannerMappingProfile()
 		{
 			CreateMap<Karty, KartyDto>()
-			.ReverseMap(); //w obie strony
+			.ReverseMap();
 
 			CreateMap<Pracownik, PracownikDto>()
-			.ReverseMap(); //w obie strony
-		
-			CreateMap<DodajPracownikaDto, Pracownik>()
 			.ReverseMap();
 
 			CreateMap<SkanerDto, Skaner>()
+			.ReverseMap();
+
+			CreateMap<DodajHistoriumDto, Historium>()
 			.ReverseMap();
 		}
 
